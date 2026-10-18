@@ -1,0 +1,15 @@
+node_modules
+dist
+.git
+.env
+**/__pycache__
+**/.venv
+backend/instance
+backend/static
+backend/tests
+docs
+README.md
+*.md
+*.db
+*.sqlite
+*.sqlite3

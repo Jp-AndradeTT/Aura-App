@@ -1,0 +1,69 @@
+# Um serviço (API + site), um Postgres e uma tarefa diária de limpeza. Confira planos/preços atuais da Render
+# e a sintaxe de cron/Docker na documentação deles antes de publicar.
+databases:
+  - name: aura-db
+    databaseName: aura
+    plan: basic-256mb
+
+services:
+  - type: web
+    name: aura
+    runtime: docker
+    plan: starter              # plano pago: não "dorme" e permite envio por SMTP (confira preços e regras atuais)
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: { name: aura-db, property: connectionString }
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATA_KEY            # chave Fernet: gere localmente e GUARDE uma cópia (ver docs/ENTREGA.md)
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CLAUDE_MODEL
+        value: claude-sonnet-5-5
+      - key: APP_URL             # endereço público, ex.: https://app.seudominio.com
+        sync: false
+      - key: SMTP_HOST           # Gmail: smtp.gmail.com (veja docs/ENTREGA.md)
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD       # senha de app do Google (não a senha da conta)
+        sync: false
+      - key: RESEND_API_KEY      # alternativa ao SMTP (exige domínio próprio)
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: INVITE_CODE         # código que a mentora passa às clientes (deixe vazio para cadastro aberto)
+        sync: false
+      - key: ADMIN_EMAILS        # e-mail da mentora (mesmo do cadastro); vê só números agregados, nunca dados financeiros de um mentorado
+        sync: false
+      - key: AI_GLOBAL_MONTHLY_LIMIT
+        value: "1000"
+      - key: AI_CHAT_DAILY
+        value: "30"
+      - key: COOKIE_SECURE
+        value: "1"
+      - key: TRUSTED_PROXIES     # 1 = só Render; mude para 2 se usar Cloudflare com proxy
+        value: "1"
+      - key: AI_EXTRACT_DAILY
+        value: "10"
+      - key: AI_PLAN_DAILY
+        value: "20"
+
+  - type: cron                   # limpeza diária: logs > 6 meses, links vencidos, contas nunca ativadas
+    name: aura-purge
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: flask --app app purge
+    schedule: "0 3 * * *"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: { name: aura-db, property: connectionString }
+      - key: DATA_KEY            # o MESMO valor do serviço web
+        sync: false
+      - key: JWT_SECRET          # não é usado pelo cron, mas o app exige a variável ao iniciar
+        value: cron-nao-usado
